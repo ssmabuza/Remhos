@@ -1296,8 +1296,8 @@ AdvectionOperator::AdvectionOperator(const Array<int> &offsets,
    ho_solver(hos), lo_solver(los), fct_solver(fct), mono_solver(mos) { }
 
 void check_violation(const Vector &u_new,
-    const Vector &u_min, const Vector &u_max,
-    string info, double tol, const Array<bool> *active_dofs)
+                     const Vector &u_min, const Vector &u_max,
+                     string info, double tol, const Array<bool> *active_dofs)
 {
    const int size = u_new.Size();
    for (int i = 0; i < size; i++)
@@ -1315,8 +1315,8 @@ void check_violation(const Vector &u_new,
 }
 
 void check_violation(const Vector &u, double dt, const Vector &du_new,
-    const Vector &u_min, const Vector &u_max,
-    string info, double tol, const Array<bool> *active_dofs)
+                     const Vector &u_min, const Vector &u_max,
+                     string info, double tol, const Array<bool> *active_dofs)
 {
    const int size = u.Size();
    for (int i = 0; i < size; i++)

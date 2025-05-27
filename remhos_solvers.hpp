@@ -105,10 +105,6 @@ class RKIDPSolver : public IDPODESolver
    // This function does not depend on the Operator f in any way.
    void ConstructD();
 
-   /// Adds only DOFs that have mask = true.
-   void AddMasked(const Array<bool> &mask, real_t b,
-                  const Vector &vb, Vector &va);
-
    void UpdateMask(const Vector &x, const Vector &dx, real_t dt,
                    Array<bool> &mask);
 
@@ -117,6 +113,11 @@ public:
    ~RKIDPSolver();
 
    void UseMask(bool mask_on) { use_masks = mask_on; }
+
+   /// Adds only DOFs that have mask = true.
+   /// Must be public due to NVCC
+   void AddMasked(const Array<bool> &mask, real_t b,
+                  const Vector &vb, Vector &va);
 
    void Init(LimitedTimeDependentOperator &f) override;
    void Step(Vector &x, double &t, double &dt) override;
