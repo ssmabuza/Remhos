@@ -54,10 +54,10 @@
 #include <umpire/strategy/QuickPool.hpp>
 #endif
 
-#ifdef USE_CALIPER
+#ifdef REMHOS_USE_CALIPER
 #include <caliper/cali.h>
 #include <caliper/cali-manager.h>
-//#include <adiak.hpp>
+#include <adiak.hpp>
 #ifdef HAVE_MPI
 #include <caliper/cali-mpi.h>
 #endif
@@ -351,16 +351,19 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
 #endif // REMHOS_USE_DEVICE_UMPIRE
 
 //setup caliper config manager
-#ifdef USE_CALIPER
+#ifdef REMHOS_USE_CALIPER
    setupCaliper();
 
    cali::ConfigManager calimgr;
    if (calimgr.error())
        std::cerr << "caliper config error: " << calimgr.error_msg() << std::endl;
    calimgr.start();
-   //adiak::init(nullptr);
-   //adiak::cmdline();
-   //adiak::hostname();
+
+   MPI_Comm adiak_mpi_comm = MPI_COMM_WORLD;
+   void* adiak_mpi_comm_ptr = &adiak_mpi_comm;
+   adiak::init(adiak_mpi_comm_ptr);
+   adiak::launchdate();
+   adiak::jobsize();
 #endif
 
    // Enable hardware devices such as GPUs, and programming models such as
@@ -547,12 +550,12 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
       v.ProjectCoefficient(vcoeff);
 
       double t = 0.0;
-#ifdef USE_CALIPER
+#ifdef REMHOS_USE_CALIPER
       CALI_CXX_MARK_LOOP_BEGIN(mainloop, "rem.mainloop");
 #endif
       while (t < t_final)
       {
-#ifdef USE_CALIPER
+#ifdef REMHOS_USE_CALIPER
          CALI_CXX_MARK_LOOP_ITERATION(mainloop, t);
 #endif
          t += dt;
@@ -561,7 +564,7 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
          // Update the node velocities.
          v.ProjectCoefficient(vcoeff);
       }
-#ifdef USE_CALIPER
+#ifdef REMHOS_USE_CALIPER
       CALI_CXX_MARK_LOOP_END(mainloop);
 #endif
 
@@ -1313,6 +1316,11 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
       }
    }
 
+#ifdef REMHOS_USE_CALIPER
+   adiak::value("steps", ti_total);
+   adiak::value("repeated_steps", ti_total-ti);
+#endif
+
    int steps = ti_total;
    switch (ode_solver_type)
    {
@@ -1479,7 +1487,8 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
       delete lom.SubFes1;
       delete lom.VolumeTerms;
    }
-#ifdef USE_CALIPER
+#ifdef REMHOS_USE_CALIPER
+   adiak::fini();
    calimgr.flush();
 #endif
    return 0;
@@ -1913,6 +1922,18 @@ void AdvectionOperator::PrintTimingData(int steps) const
                 << "FOM FCT: " << 1e-6 * dofs_steps / T[3] << std::endl
                 << "FOM:     " << 1e-6 * dofs_steps / T[4] << std::endl;
       std::cout << "(megadofs x time steps / second)\n---" << std::endl;
+#ifdef REMHOS_USE_CALIPER
+      adiak::value("rhs", T[0]);
+      adiak::value("l2inv", T[1]);
+      adiak::value("lo", T[2]);
+      adiak::value("fct", T[3]);
+      adiak::value("total_time", T[4]);
+      adiak::value("fom_rhs", 1e-6 * dofs_steps / T[0]);
+      adiak::value("fom_inv", 1e-6 * dofs_steps / T[1]);
+      adiak::value("fom_lo", 1e-6 * dofs_steps / T[2]);
+      adiak::value("fom_fct", 1e-6 * dofs_steps / T[3]);
+      adiak::value("fom", 1e-6 * dofs_steps / T[4]);
+#endif
    }
 }
 
@@ -2333,7 +2354,7 @@ double inflow_function(const Vector &x)
 
 void setupCaliper()
 {
-#ifdef USE_CALIPER
+#ifdef REMHOS_USE_CALIPER
 #ifdef HAVE_MPI
    cali_mpi_init();
 #endif
