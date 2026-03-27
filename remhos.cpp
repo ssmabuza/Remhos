@@ -362,8 +362,7 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
    MPI_Comm adiak_mpi_comm = MPI_COMM_WORLD;
    void* adiak_mpi_comm_ptr = &adiak_mpi_comm;
    adiak::init(adiak_mpi_comm_ptr);
-   adiak::launchdate();
-   adiak::jobsize();
+   adiak::collect_all();
 #endif
 
    // Enable hardware devices such as GPUs, and programming models such as
