@@ -50,8 +50,15 @@
 
 #if (defined(HYPRE_USING_UMPIRE) || defined(MFEM_USE_UMPIRE)) && (defined(MFEM_USE_CUDA) || defined(MFEM_USE_HIP))
 #define REMHOS_USE_DEVICE_UMPIRE
+#define REMHOS_DEVICE_ALLOCATOR_NAME "REMHOS_DEVICE_POOL"
 #include <umpire/Umpire.hpp>
 #include <umpire/strategy/QuickPool.hpp>
+
+double getDeviceMemoryHighWatermark() {
+  auto &rm = umpire::ResourceManager::getInstance();
+  auto allocator = rm.getAllocator(REMHOS_DEVICE_ALLOCATOR_NAME);
+  return ((double) allocator.getHighWatermark()) / (1024 * 1024 * 1024);
+}
 #endif
 
 #ifdef REMHOS_USE_CALIPER
@@ -334,10 +341,13 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
 
 #ifdef REMHOS_USE_DEVICE_UMPIRE
    auto &rm = umpire::ResourceManager::getInstance();
-   const char * allocator_name = "remhos_device_alloc";
+   const char * allocator_name = REMHOS_DEVICE_ALLOCATOR_NAME;
    size_t umpire_dev_pool_size = ((size_t) dev_pool_size) * 1024 * 1024 * 1024;
    size_t umpire_dev_block_size = 1024 * 1024;
-   rm.makeAllocator<umpire::strategy::QuickPool>(allocator_name, rm.getAllocator("DEVICE"), umpire_dev_pool_size, umpire_dev_block_size);
+   rm.makeAllocator<umpire::strategy::QuickPool>(allocator_name,
+                                                 rm.getAllocator("DEVICE"),
+                                                 umpire_dev_pool_size,
+                                                 umpire_dev_block_size);
 
 #ifdef HYPRE_USING_UMPIRE
    HYPRE_SetUmpireDevicePoolName(allocator_name);
@@ -1489,6 +1499,18 @@ MFEM_EXPORT int remhos(int argc, char *argv[], double &final_mass_u)
 #ifdef REMHOS_USE_CALIPER
    adiak::fini();
    calimgr.flush();
+#endif
+
+#ifdef REMHOS_USE_DEVICE_UMPIRE
+   if (myid == 0)
+   {
+      cout << "Umpire device memory pool size: " << dev_pool_size << " GB" << endl;
+      cout << "Umpire device memory high water mark: " << getDeviceMemoryHighWatermark() << " GB" << endl;
+#ifdef REMHOS_USE_CALIPER
+      adiak::value("umpire_device_pool_size", dev_pool_size);
+      adiak::value("umpire_device_high_water_mark", getDeviceMemoryHighWatermark());
+#endif
+   }
 #endif
    return 0;
 }
